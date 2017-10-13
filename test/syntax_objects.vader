@@ -1,0 +1,56 @@
+
+Given vim (basic highlight finding):
+  let myvar = "hello world"
+
+Execute (get the highlights):
+  " cursor on "let"
+  AssertEqual ['vimlet'], syntax_objects#groups_at_cursor()
+
+  " move to "myvar"
+  normal! w
+  AssertEqual ['vimvar'], syntax_objects#groups_at_cursor()
+
+
+Given vim (basic highlight finding):
+  let myvar = "hello world"
+
+Execute (find the start and end of a syntax object):
+  AssertEqual ['vimlet'], syntax_objects#groups_at_cursor()
+  AssertEqual {'start': {'line': 1, 'col': 1}, 'finish': {'line': 1, 'col': 3}}, syntax_objects#get_group('vimLet')
+
+Given vim (highlighting in some other spots):
+  let myvar = "hello world"
+
+Execute (find some middle of the lines objects):
+  " Move into "myvar"
+  normal! wll
+
+  AssertEqual ['vimvar'], syntax_objects#groups_at_cursor()
+  AssertEqual {'start': {'line': 1, 'col': 5}, 'finish': {'line': 1, 'col': 9}}, syntax_objects#get_group('vimVar')
+
+Given vim (get start and finish of something further in the line):
+  let myvar = "hello world"
+
+Execute:
+  AssertEqual ['vimlet'], syntax_objects#groups_at_cursor()
+  AssertEqual {'start': {'line': 1, 'col': 5}, 'finish': {'line': 1, 'col': 9}}, syntax_objects#get_group('vimVar')
+
+  normal! $
+  AssertEqual v:null, syntax_objects#get_group('vimVar')
+  AssertEqual {'start': {'line': 1, 'col': 5}, 'finish': {'line': 1, 'col': 9}},
+    \ syntax_objects#get_group('vimVar', {'direction': -1})
+
+Given vim (get start of later item, and ignore this one):
+  let myvar = "not this line"
+  let othervar = "choose this line"
+  " Is this some weird line thing
+
+Execute:
+  Log "testing first version, without ignore"
+  AssertEqual ['vimlet'], syntax_objects#groups_at_cursor()
+  AssertEqual {'start': {'line': 1, 'col': 1}, 'finish': {'line': 1, 'col': 3}}, syntax_objects#get_group('vimlet')
+
+  Log "testing second version, with ignore"
+  echo 'Second search'
+  AssertEqual {'start': {'line': 2, 'col': 1}, 'finish': {'line': 2, 'col': 3}},
+    \ syntax_objects#get_group('vimlet', {'ignore_current': v:true})
