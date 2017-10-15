@@ -1,3 +1,6 @@
+" File: autoload/syntax_objects.vim
+" Author: TJ DeVries
+
 " Helper Functions {{{
 function! s:find_start_group(line, col, group_name, ignore_current)
   return s:search_group(a:line, a:col, a:group_name, -1, a:ignore_current)
@@ -15,9 +18,10 @@ function! s:debug(...)
   endif
 endfunction
 
+" Return the lower case version of the names of ids, so that we can search by them
 function! s:get_groups_at_position(line, col)
-  " return the lower case version of this. Really no reason not to
-  return map(synstack(a:line, a:col), { index, val -> tolower(synIDattr(val, 'name')) })
+  return luaeval('require("syntax_objects.init").get_groups_at_position(_A.line, _A.col)',
+        \ {'line': a:line, 'col': a:col })
 endfunction
 
 function! syntax_objects#groups_at_cursor()
@@ -29,90 +33,18 @@ endfunction
 ""
 " @param direction: +1 for forwards, -1 for backwards
 function! s:search_group(line, col, group_name, direction, ignore_current)
-  let group = tolower(a:group_name)
+  let args = {}
+  let args.line = a:line
+  let args.col = a:col
+  let args.group = a:group_name
+  let args.direction = a:direction
+  let args.ignore = a:ignore_current
+  let args.q = v:false
 
-  let found = v:false
-
-  let current_line = a:line
-  let current_col = a:col
-
-  let end_line = a:direction == 1 ? line('$') + 1 : 0
-
-  " {{{ Ignore Current
-  if a:ignore_current && std#list#contains(s:get_groups_at_position(current_line, current_col), group)
-    call s:debug('Checking for ignore current...', current_line, current_col)
-    let ignore_break = v:false
-
-    while current_line != end_line && current_line > 0
-      let end_col = a:direction == 1 ? col([current_line, '$']) + 1 : 0
-      while current_col != end_col && current_col > 0
-        if std#list#contains(s:get_groups_at_position(current_line, current_col), group)
-          call s:debug('Still contains item...', printf('{"line": %s, "col": %s}', current_line, current_col))
-          let current_col = current_col + a:direction
-        else
-          call s:debug(printf('Setting ignore break with {"line": %s, "col": %s}', current_line, current_col))
-          let ignore_break = v:true
-          break
-        endif
-      endwhile
-
-      if ignore_break
-        break
-      endif
-
-      let current_line = current_line + 1
-      let current_col = a:direction == 1 ? 1 : col([current_line, '$'])
-    endwhile
-
-    call s:debug('current_line', current_line, 'current_col', current_col)
-  endif
-  " }}}
-
-  while current_line != end_line && current_line > 0
-    let end_col = a:direction == 1 ? col([current_line, '$']) + 1 : 0
-    while current_col != end_col && current_col > 0
-      let syntax_list = s:get_groups_at_position(current_line, current_col)
-
-      call s:debug(current_line, current_col, syntax_list)
-
-      if !empty(syntax_list) || found
-        if index(syntax_list, group) >= 0
-          if !found
-            let found = v:true
-          endif
-        else
-          if found
-            " Handle some end of line shenanigans
-            if current_col == (a:direction == 1 ? 0 : col([current_line, '$']))
-              call s:debug('End of line:', current_line, current_col)
-              let current_line = current_line - a:direction
-              let current_col = a:direction == 1 ? col([current_line, '$']) : 0
-            endif
-
-            call s:debug(printf('Dir: %s | Current: %s, %s | End: %s, %s',
-                  \ a:direction, current_line, current_col, end_line, end_col))
-
-            return [current_line, current_col - a:direction]
-          endif
-        endif
-      endif
-
-      let current_col = current_col + a:direction
-    endwhile
-
-    let current_line = current_line + a:direction
-    let current_col = a:direction == 1 ? 1 : col([current_line, '$'])
-  endwhile
-
-  if found
-    if a:direction == 1
-      return [line('$'), col([line('$'), '$')]
-    else
-      return [1, 1]
-    endif
-  endif
-
-  return [-1, -1]
+  return luaeval(
+        \ 'require("syntax_objects.init").search_group(_A.line, _A.col, _A.group, _A.direction, _A.ignore, _A.q)',
+        \ args
+        \ )
 endfunction
 
 ""
