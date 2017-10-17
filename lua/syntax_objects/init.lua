@@ -68,6 +68,8 @@ local lazy_func = function(...) return { call_func, ... } end
 
 -- }}}
 local plugin = {}
+-- Used to keep track of how many items we've checked.
+plugin.count = 0
 
 plugin.get_groups_at_position = function(line, col) -- {{{1
   -- TODO: Also handling things like "synIDtrans"?
@@ -82,6 +84,8 @@ plugin.in_group = function(group, line, column) -- {{{1
 end
 
 plugin.search_group = function(line, column, arg_group, options) -- {{{1
+  plugin.count = 0
+
   local direction = options.search_direction
   local ignore_current = options.ignore_current
   local early_quit = options.fast
@@ -138,6 +142,12 @@ plugin.search_group = function(line, column, arg_group, options) -- {{{1
       ) + direction
 
     while column ~= end_column and column > 0 do
+      plugin.count = plugin.count + 1
+
+      if not options.force and plugin.count > 1000 then
+        return {-1, -1}
+      end
+
       if plugin.in_group(group, line, column) then
         found = true
       elseif found then
@@ -234,6 +244,7 @@ plugin.get_group = function(arg_group, options, start_line, start_column) -- {{{
   table.default(options, 'direction', 1)
   table.default(options, 'ignore_current', false)
   table.default(options, 'fast', false)
+  table.default(options, 'force', false)
 
   local position = {
     start = {},
