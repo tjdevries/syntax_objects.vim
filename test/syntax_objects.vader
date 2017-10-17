@@ -54,3 +54,13 @@ Execute:
   echo 'Second search'
   AssertEqual {'start': {'line': 2, 'col': 1}, 'finish': {'line': 2, 'col': 3}},
     \ syntax_objects#get_group('vimlet', {'ignore_current': v:true})
+
+Given vim (get some faster results):
+  let myvar = "faster backwards"
+
+Execute:
+  normal! $
+  AssertEqual {'start': {'line': 1, 'col': 1}}, syntax_objects#get_group('vimlet', {
+      \ 'direction': -1,
+      \ 'fast': 'start',
+      \ })
