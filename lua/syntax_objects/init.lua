@@ -108,7 +108,11 @@ plugin.search_group = function(line, column, arg_group, options) -- {{{1
   local group = string.lower(arg_group)
 
   local found = false
-  local end_line = lazy_ternary(direction == 1, lazy_func('line', {'$'}), 1) + direction
+  local end_line = lazy_ternary(
+    direction == 1
+      , lazy_func('line', {'$'})
+      , 1
+    ) + direction
 
   -- {{{2 Handle ignore current
   if ignore_current and plugin.in_group(group, line, column) then
@@ -183,9 +187,9 @@ plugin.search_group = function(line, column, arg_group, options) -- {{{1
 
     line = line + direction
     column = lazy_ternary(
-      direction == 1,
-        1,
-        lazy_func('col',{ {line, '$'} })
+      direction == 1
+        , 1
+        , lazy_func('col',{ {line, '$'} })
       )
   end
 
