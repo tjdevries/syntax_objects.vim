@@ -36,6 +36,17 @@ table.default = function(array, key, value)
   end
 end
 
+-- luacheck: globals table.copy
+table.copy = function(array)
+  local res = {}
+
+  for i, v in ipairs(array) do
+    res[i] = v
+  end
+
+  return res
+end
+
 local lazy_ternary = function(cond, func_true, func_false)
   local func_ref
   local func_args
@@ -259,7 +270,7 @@ plugin.get_group = function(arg_group, options, start_line, start_column) -- {{{
 
       -- If we want only the fastest result and we're going forward,
       -- just return the forward result
-      local current_options = { unpack(options) }
+      local current_options = {  }
       current_options.ignore_current = false
       if options.fast == 'finish' then
         position.start = nil
@@ -299,7 +310,7 @@ plugin.get_group = function(arg_group, options, start_line, start_column) -- {{{
       return position
     end
 
-    local backward_options = { unpack(options) }
+    local backward_options = table.copy(options)
     backward_options.ignore_current = false
     update_position_backward(position, position.finish.line, position.finish.col, group, backward_options)
 
@@ -319,7 +330,7 @@ plugin.get_group = function(arg_group, options, start_line, start_column) -- {{{
       return position
     end
 
-    local forward_options = { unpack(options) }
+    local forward_options = table.copy(options)
     forward_options.ignore_current = false
     update_position_forward(position, position.start.line, position.start.col, group, forward_options)
 
