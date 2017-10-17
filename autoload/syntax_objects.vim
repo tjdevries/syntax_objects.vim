@@ -91,11 +91,11 @@ function! syntax_objects#move_to_group(group, ...) abort
     return v:null
   endif
 
-  if !has_key(location, options.location_key)
+  if !has_key(location, options.fast)
     return v:null
   endif
 
-  call cursor(location[options.location_key].line, location[options.location_key].col)
+  call cursor(location[options.fast].line, location[options.fast].col)
 
   return v:true
 endfunction
