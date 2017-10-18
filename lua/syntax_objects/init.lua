@@ -8,11 +8,14 @@ end
 
 -- luacheck: globals table.map
 -- Set up some useful items for me
+-- Not technically a real "map" as it can expand things
 table.map = function(array, func)
   local new_array = {}
 
-  for index, value in ipairs(array) do
-    new_array[index] = func(value)
+  for _, value in ipairs(array) do
+    for _, result in ipairs({ func(value) }) do
+      table.insert(new_array, result)
+    end
   end
 
   return new_array
@@ -81,17 +84,33 @@ local lazy_func = function(...) return { call_func, ... } end
 local plugin = {}
 -- Used to keep track of how many items we've checked.
 plugin.count = 0
+plugin.max_count = 100000
 
-plugin.get_groups_at_position = function(line, col) -- {{{1
-  -- TODO: Also handling things like "synIDtrans"?
-  -- debug('checking position: %s %s', line, col)
+plugin.get_groups_at_position = function(line, col, options) -- {{{1
+  if options == nil then options = {} end
+
+  table.default(options, 'check_trans', false)
+  local check_trans = options.check_trans
+
   return table.map(call_func('synstack', {line, col}), function(val)
-    return string.lower(call_func('synIDattr', {val, 'name'}))
+    local base_name = string.lower(call_func('synIDattr', {val, 'name'}))
+
+    if not check_trans then
+      return base_name
+    end
+
+    local trans_name = string.lower(call_func('synIDattr', {call_func('synIDtrans', {val}), 'name'}))
+
+    if base_name == trans_name then
+      return base_name
+    else
+      return base_name, trans_name
+    end
   end)
 end
 
-plugin.in_group = function(group, line, column) -- {{{1
-  return table.contains(plugin.get_groups_at_position(line, column), group)
+plugin.in_group = function(group, line, column, options) -- {{{1
+  return table.contains(plugin.get_groups_at_position(line, column, options), group)
 end
 
 plugin.search_group = function(line, column, arg_group, options) -- {{{1
@@ -115,7 +134,7 @@ plugin.search_group = function(line, column, arg_group, options) -- {{{1
     ) + direction
 
   -- {{{2 Handle ignore current
-  if ignore_current and plugin.in_group(group, line, column) then
+  if ignore_current and plugin.in_group(group, line, column, options) then
     local ignore_break = false
 
     while line ~= end_line and line > 0 do
@@ -127,7 +146,7 @@ plugin.search_group = function(line, column, arg_group, options) -- {{{1
 
       while column ~= end_column and column > 0 do
 
-        if plugin.in_group(group, line, column) then
+        if plugin.in_group(group, line, column, options) then
           column = column + direction
         else
           ignore_break = true
@@ -156,14 +175,19 @@ plugin.search_group = function(line, column, arg_group, options) -- {{{1
         , 1
       ) + direction
 
-    while column ~= end_column and column > 0 do
+    while (end_column ~= 2) and (column ~= end_column) and (column > 0) do
       plugin.count = plugin.count + 1
 
-      if not options.force and plugin.count > 1000 then
+      if not options.force and plugin.count > plugin.max_count then
+        print(string.format(
+          'Could not find search within max_count. Use option.force to search for longer.'
+          .. 'Made it to: %s, %s end(%s, %s)',
+          line, column, end_line, end_column)
+        )
         return {-1, -1}
       end
 
-      if plugin.in_group(group, line, column) then
+      if plugin.in_group(group, line, column, options) then
         found = true
       elseif found then
         if column == lazy_ternary(
@@ -202,7 +226,7 @@ plugin.search_group = function(line, column, arg_group, options) -- {{{1
     end
   end
 
-  debug('Could not find anything: %s, %s', line, column)
+  print(string.format('Could not find anything for group "%s": %s, %s', group, line, column))
   return {-1, -1}
 end
 
@@ -260,6 +284,7 @@ plugin.get_group = function(arg_group, options, start_line, start_column) -- {{{
   table.default(options, 'ignore_current', false)
   table.default(options, 'fast', false)
   table.default(options, 'force', false)
+  table.default(options, 'check_trans', false)
 
   local position = {
     start = {},
@@ -267,14 +292,14 @@ plugin.get_group = function(arg_group, options, start_line, start_column) -- {{{
   }
 
   if not options.ignore_current or (options.direction == 0) then
-    if plugin.in_group(group, start_line, start_column) then
+    if plugin.in_group(group, start_line, start_column, options) then
       debug('Searching within current match...')
 
       -- TODO: I don't really want to have to write the "update_position_***" functions twice
 
       -- If we want only the fastest result and we're going forward,
       -- just return the forward result
-      local current_options = {  }
+      local current_options = table.copy(options)
       current_options.ignore_current = false
       if options.fast == 'finish' then
         position.start = nil
