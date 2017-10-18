@@ -4,7 +4,6 @@ Map keys to interact with syntax objects
 ## Installation
 
 ```vim
-Plug 'tjdevries/standard.vim'
 Plug 'tjdevries/syntax_objects.vim'
 ```
 
@@ -16,10 +15,16 @@ Plug 'tjdevries/syntax_objects.vim'
 " In after/ftplugin/vim.vim
 nnoremap <buffer> <leader>nf :call syntax_objects#move_to_group('vimfuncbody',
     \ {'ignore_current': v:true, 'direction': 1})<CR>
+" Or:
+nnoremap <buffer> <leader>nf :call syntax_objects#move_to_group('function',
+    \ {'ignore_current': v:true, 'direction': 1, 'check_trans': 1})<CR>
 
 " <leader> Previous Function
 nnoremap <buffer> <leader>pf :call syntax_objects#move_to_group('vimfuncbody',
     \ {'ignore_current': v:true, 'direction': -1})<CR>
+" Or:
+nnoremap <buffer> <leader>pf :call syntax_objects#move_to_group('function',
+    \ {'ignore_current': v:true, 'direction': -1, 'check_trans': 1})<CR>
 ```
 
 ## Improvements
